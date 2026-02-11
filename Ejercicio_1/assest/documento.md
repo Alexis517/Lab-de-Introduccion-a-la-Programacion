@@ -1,11 +1,4 @@
 
-Sí — ya lo tengo 👍
-te lo dejo convertido a Markdown listo para pegar directo en GitHub (README.md o cualquier .md).
-Tomé tu documento tal cual y solo lo acomodé con encabezados y bloques de código  ￼
-
-Copia TODO lo de abajo:
-
-⸻
 
 
 # Guía paso a paso: Python + Entorno Virtual + NumPy en Windows
