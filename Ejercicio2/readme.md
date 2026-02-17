@@ -1,7 +1,7 @@
 Código de Calculadora de Conversión
 Descripción del funcionamiento
 
-Bueno… lo que hice fue primero pedirle al usuario que escribiera un número decimal y lo guardé en una variable que se llama numero. Le puse int() porque si no, Python lo toma como texto y no se puede hacer la división.
+Bueno lo que hice fue primero pedirle al usuario que escribiera un número decimal y lo guardé en una variable que se llama numero. Le puse int() porque si no, Python lo toma como texto y no se puede hacer la división.
 
 Después hice una función que se llama convertir, que recibe el número y la base a la que lo quiero convertir. O sea, puede ser 2, 8 o 16.
 
