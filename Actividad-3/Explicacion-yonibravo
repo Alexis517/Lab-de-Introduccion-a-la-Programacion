@@ -15,6 +15,6 @@ Después revisa letra por letra la contraseña para ver si tiene al menos una le
 Si pasa todas esas revisiones, ahora sí compara si el usuario es "admin" y la contraseña es "Admin2026".
 Si es correcto, dice “Acceso concedido” y se sale del ciclo con break.
 
-Si no coincide, dice que las credenciales son incorrectas y suma un intento.
+Si no coincide, dice que el usuario o contraseña son incorrectas y suma un intento.
 
 Y si ya llegó a los 3 intentos, muestra un mensaje diciendo que ya fueron demasiados intentos y se termina el programa.
