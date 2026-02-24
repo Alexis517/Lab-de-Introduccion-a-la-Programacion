@@ -1,0 +1,20 @@
+Bueno este programa lo que hace es como un inicio de sesión.
+
+Primero pongo una variable que se llama intentos y empieza en 0, eso es para contar cuántas veces la persona intenta entrar.
+
+Luego uso un while para que el programa repita todo mientras no pase de 3 intentos. O sea, solo deja intentar 3 veces.
+
+Después le pide al usuario que escriba su nombre y su contraseña.
+
+Primero revisa el usuario. Si está vacío o tiene cosas raras que no sean letras o números, entonces dice que está mal, suma un intento y vuelve a empezar.
+
+Luego revisa la contraseña. Si tiene menos de 8 caracteres, también está mal y vuelve a empezar.
+
+Después revisa letra por letra la contraseña para ver si tiene al menos una letra y un número. Si no tiene las dos cosas, también marca error.
+
+Si pasa todas esas revisiones, ahora sí compara si el usuario es "admin" y la contraseña es "Admin2026".
+Si es correcto, dice “Acceso concedido” y se sale del ciclo con break.
+
+Si no coincide, dice que las credenciales son incorrectas y suma un intento.
+
+Y si ya llegó a los 3 intentos, muestra un mensaje diciendo que ya fueron demasiados intentos y se termina el programa.
