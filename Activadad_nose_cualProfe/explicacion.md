@@ -104,5 +104,3 @@ Y ya al final:
 app.run(debug=True)
 ```
 
-Levanta el servidor para que puedas entrar desde el navegador.
-Si quieres, después te lo explico en versión pro o te ayudo a mejorarlo (por ejemplo: que guarde historial o que suene cuando detecte un código).
