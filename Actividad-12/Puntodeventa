@@ -1,1 +1,299 @@
+from flask import Flask, render_template_string, jsonify, request, send_file
+import datetime
+import qrcode
+import io
+import requests
 
+app = Flask(__name__)
+
+
+def obtener_url_publica():
+    try:
+        data = requests.get("http://127.0.0.1:4040/api/tunnels", timeout=2).json()
+        for tunnel in data.get("tunnels", []):
+            public_url = tunnel.get("public_url", "")
+            if public_url.startswith("https://"):
+                return public_url
+    except Exception:
+        pass
+
+    return "http://127.0.0.1:5000"
+
+
+URL_SEGURA = obtener_url_publica()
+print("URL pública:", URL_SEGURA)
+
+sistema = {
+    "carrito": [],
+    "ultimo_item": None
+}
+
+PRODUCTOS_DB = {
+    "7501055300074": {"nombre": "Leche Entera 1L", "precio": 28.50},
+    "7501031311681": {"nombre": "Pan de Caja", "precio": 45.00},
+    "041220571932": {"nombre": "Cereal Kelloggs", "precio": 62.00}
+}
+
+
+@app.route('/')
+def index():
+    return render_template_string(HTML_PC, url_publica=URL_SEGURA)
+
+
+@app.route('/scan')
+def scan():
+    return render_template_string(HTML_MOVIL)
+
+
+@app.route('/generar_qr')
+def generar_qr():
+    url_final = f"{URL_SEGURA}/scan"
+    img = qrcode.make(url_final)
+    buf = io.BytesIO()
+    img.save(buf)
+    buf.seek(0)
+    return send_file(buf, mimetype='image/png')
+
+
+@app.route('/api/enviar', methods=['POST'])
+def api_enviar():
+    datos = request.get_json()
+    codigo = datos["codigo"]
+
+    info = PRODUCTOS_DB.get(
+        codigo,
+        {"nombre": f"Producto {codigo}", "precio": 15.00}
+    )
+
+    nuevo = {
+        "id": len(sistema["carrito"]) + 1,
+        "codigo": codigo,
+        "nombre": info["nombre"],
+        "precio": info["precio"],
+        "hora": datetime.datetime.now().strftime("%H:%M:%S")
+    }
+
+    sistema["carrito"].append(nuevo)
+    sistema["ultimo_item"] = nuevo
+
+    return jsonify({"status": "ok"})
+
+
+@app.route('/api/escuchar')
+def api_escuchar():
+    item = sistema["ultimo_item"]
+    sistema["ultimo_item"] = None
+
+    total = sum(i["precio"] for i in sistema["carrito"])
+
+    return jsonify({
+        "item": item,
+        "total": total,
+        "cantidad": len(sistema["carrito"])
+    })
+
+
+HTML_PC = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Walmart POS System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .walmart-blue { background-color: #0071dc; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans h-screen overflow-hidden">
+
+    <nav class="walmart-blue p-4 text-white shadow-lg flex justify-between items-center px-10">
+        <div class="flex items-center gap-2">
+            <span class="text-3xl font-bold italic tracking-tighter">
+                Walmart<span class="text-yellow-400 font-black px-1">☀️</span>
+            </span>
+            <span class="text-lg font-light ml-4">Caja Rápida 04</span>
+        </div>
+
+        <div class="flex gap-3">
+            <button onclick="abrirModal()" class="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold py-2 px-6 rounded-full shadow-lg">
+                📱 VINCULAR ESCÁNER
+            </button>
+
+            <button onclick="abrirCamara()" class="bg-white text-blue-700 border border-blue-200 font-bold py-2 px-6 rounded-full hover:bg-blue-50 shadow">
+                📷 ABRIR CÁMARA
+            </button>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto p-8">
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+
+            <div class="p-6 border-b flex justify-between">
+                <h2 class="text-xl font-bold">Artículos</h2>
+                <span id="badge" class="bg-blue-100 text-blue-700 px-4 py-1 rounded-full font-bold">
+                    0 productos
+                </span>
+            </div>
+
+            <div id="contenedor-lista" class="p-6 space-y-4 min-h-[300px]">
+                <div id="empty-state" class="text-center py-20 text-gray-400">
+                    <p class="text-5xl mb-4">🛒</p>
+                    <p>Escanea un producto para comenzar</p>
+                </div>
+            </div>
+
+            <div class="p-6 bg-gray-50 border-t">
+                <div class="flex justify-between">
+                    <span class="font-medium">TOTAL</span>
+                    <span id="total-val" class="font-black text-3xl text-blue-700">$0.00</span>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="modalQR" class="fixed inset-0 bg-black/70 hidden flex items-center justify-center">
+        <div class="bg-white rounded-3xl p-8 text-center shadow-2xl">
+            <h3 class="text-2xl font-bold mb-4">Conectar celular</h3>
+            <img src="/generar_qr" class="w-52 h-52 mx-auto">
+            <p class="text-sm text-gray-500 mt-4">{{ url_publica }}/scan</p>
+
+            <button onclick="cerrarModal()" class="mt-5 text-gray-500 font-bold">
+                Cerrar
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function abrirModal() {
+            document.getElementById('modalQR').classList.remove('hidden');
+            document.getElementById('modalQR').classList.add('flex');
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalQR').classList.add('hidden');
+            document.getElementById('modalQR').classList.remove('flex');
+        }
+
+        function abrirCamara() {
+            window.open('/scan', '_blank');
+        }
+
+        setInterval(() => {
+            fetch('/api/escuchar')
+            .then(res => res.json())
+            .then(data => {
+                if (data.item) {
+                    const empty = document.getElementById('empty-state');
+                    if (empty) empty.remove();
+
+                    cerrarModal();
+
+                    const lista = document.getElementById('contenedor-lista');
+
+                    const htmlItem = `
+                        <div class="flex justify-between items-center p-4 bg-white border rounded-xl shadow-sm">
+                            <div>
+                                <p class="font-bold">${data.item.nombre}</p>
+                                <p class="text-xs text-gray-400">${data.item.codigo} | ${data.item.hora}</p>
+                            </div>
+                            <span class="font-black text-xl">$${data.item.precio.toFixed(2)}</span>
+                        </div>
+                    `;
+
+                    lista.insertAdjacentHTML('afterbegin', htmlItem);
+
+                    document.getElementById('total-val').innerText =
+                        "$" + data.total.toFixed(2);
+
+                    document.getElementById('badge').innerText =
+                        data.cantidad + " productos";
+                }
+            });
+        }, 1000);
+    </script>
+
+</body>
+</html>
+"""
+
+
+HTML_MOVIL = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escáner</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-black text-white h-screen flex flex-col">
+
+    <div class="p-5 text-center">
+        <h1 class="text-xl font-bold">Escáner móvil</h1>
+        <p class="text-xs text-blue-400">Walmart Mobile Terminal</p>
+    </div>
+
+    <div class="flex-grow flex items-center justify-center">
+        <div id="reader" class="w-[320px]"></div>
+    </div>
+
+    <div id="status" class="p-5 text-center text-gray-400">
+        Apunta a un código de barras
+    </div>
+
+    <script>
+        let ultimoCodigo = null;
+        let ultimoTiempo = 0;
+
+        function onScanSuccess(decodedText) {
+            const ahora = Date.now();
+
+            if (decodedText === ultimoCodigo && (ahora - ultimoTiempo) < 2000) {
+                return;
+            }
+
+            ultimoCodigo = decodedText;
+            ultimoTiempo = ahora;
+
+            if (navigator.vibrate) navigator.vibrate(200);
+
+            const status = document.getElementById('status');
+            status.innerText = "PRODUCTO ENVIADO";
+
+            fetch('/api/enviar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({codigo: decodedText})
+            })
+            .then(() => {
+                setTimeout(() => {
+                    status.innerText = "Apunta a un código de barras";
+                }, 1000);
+            });
+        }
+
+        const scanner = new Html5QrcodeScanner(
+            "reader",
+            {
+                fps: 20,
+                qrbox: { width: 280, height: 150 }
+            },
+            false
+        );
+
+        scanner.render(onScanSuccess);
+    </script>
+
+</body>
+</html>
+"""
+
+
+if __name__ == "__main__":
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=False,
+        use_reloader=False
+    )
